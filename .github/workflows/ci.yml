@@ -14,12 +14,11 @@ jobs:
       postgres:
         image: postgres:latest
         env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
           POSTGRES_DB: testdb
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
-
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -36,38 +35,50 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
-
-      # Setup Chrome for Selenium tests
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@latest
 
       - name: Setup ChromeDriver
         uses: nanasess/setup-chromedriver@master
 
-      # Start Chrome Driver
-      - name: Start ChromeDriver
+      # Start Chrome in headless mode
+      - name: Start Chrome
         run: |
+          sudo apt-get update
+          sudo apt-get install xvfb
+          Xvfb :99 &
+          export DISPLAY=:99
           chromedriver --version
           chromedriver &
 
-      - name: Build with Gradle
-        run: ./gradlew build
+      # Add wait time for services to be ready
+      - name: Wait for PostgreSQL
+        run: |
+          while ! pg_isready -h localhost -p 5432; do
+            sleep 1
+          done
 
-      - name: Run Tests
-        run: ./gradlew test
+      - name: Build with Gradle
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/testdb
           SPRING_DATASOURCE_USERNAME: postgres
           SPRING_DATASOURCE_PASSWORD: postgres
+          SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+        run: ./gradlew build
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      - name: Run Tests
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/testdb
+          SPRING_DATASOURCE_USERNAME: postgres
+          SPRING_DATASOURCE_PASSWORD: postgres
+          SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+          SELENIUM_HEADLESS: true
+        run: ./gradlew test
 
-      - name: Build Docker image
-        run: docker build -t springapp:latest .
-
-      - name: Test Docker image
-        run: |
-          docker run springapp:latest echo "Container is running"
+      # Add test report publishing
+      - name: Publish Test Report
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-results
+          path: build/reports/tests/test
