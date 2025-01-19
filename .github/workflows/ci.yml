@@ -75,10 +75,9 @@ jobs:
           SELENIUM_HEADLESS: true
         run: ./gradlew test
 
-      # Add test report publishing
       - name: Publish Test Report
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: build/reports/tests/test
