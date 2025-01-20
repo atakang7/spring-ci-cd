@@ -1,9 +1,15 @@
-plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.2.8'
-	id 'io.spring.dependency-management' version '1.1.7'
-	id 'org.owasp.dependencycheck' version '8.4.0'
-}
+	plugins {
+		id 'java'
+		id 'org.springframework.boot' version '3.2.8'
+		id 'io.spring.dependency-management' version '1.1.7'
+		id 'org.owasp.dependencycheck' version '8.4.0'
+	}
+
+	dependencyManagement {
+		imports {
+			mavenBom "org.springframework:spring-framework-bom:6.1.14"
+		}
+	}
 
 	group = 'com.spring'
 	version = '0.0.1-SNAPSHOT'
