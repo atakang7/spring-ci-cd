@@ -35,13 +35,24 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Build Docker image
+        run: docker build -t my-java-app .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'my-java-app'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@latest
 
       - name: Setup ChromeDriver
         uses: nanasess/setup-chromedriver@master
 
-      # Start Chrome in headless mode
       - name: Start Chrome
         run: |
           sudo apt-get update
@@ -51,7 +62,6 @@ jobs:
           chromedriver --version
           chromedriver &
 
-      # Add wait time for services to be ready
       - name: Wait for PostgreSQL
         run: |
           while ! pg_isready -h localhost -p 5432; do
@@ -81,3 +91,10 @@ jobs:
         with:
           name: test-results
           path: build/reports/tests/test
+
+      - name: Publish Security Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: trivy-results.sarif
